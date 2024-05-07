@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import tkinter as tk
 from tkinter import filedialog
 
+custom_filter_window = None  # Definindo custom_filter_window como uma variável global
+entries = None  # Definindo entries como uma variável global
+
 def convolution(image, kernel):
     # Obtém as dimensões da imagem e do kernel
     image_height, image_width = image.shape
@@ -69,20 +72,60 @@ def apply_filter():
     # Obtém o filtro selecionado
     selected_filter = filter_variable.get()
 
-    # Obtém o kernel do filtro selecionado
-    kernel = filters[selected_filter]
+    if selected_filter == "Custom":
+        # Pede ao usuário para inserir a matriz do filtro manualmente
+        create_custom_filter_window()
+    else:
+        # Obtém o kernel do filtro selecionado
+        kernel = filters[selected_filter]
 
-    # Aplica a convolução à imagem em escala de cinza
-    imagem_filtrada = convolution(imagem_suavizada, kernel)
+        # Aplica a convolução à imagem em escala de cinza
+        imagem_filtrada = convolution(imagem_suavizada, kernel)
+
+        # Exibe a imagem resultante
+        plt.imshow(imagem_filtrada, cmap='gray')
+        plt.axis('off')
+        plt.show()
+
+        #save_image(imagem_filtrada)
+
+def apply_filter_custom():
+    # Obtém os valores da matriz do filtro personalizado dos campos de entrada
+    custom_filter = [[float(entry.get()) for entry in row] for row in entries]
+
+    # Converte a imagem original para escala de cinza
+    imagem_cinza = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+
+    imagem_suavizada = smooth_image(imagem_cinza)
+
+    # Aplica a convolução à imagem em escala de cinza usando o filtro personalizado
+    imagem_filtrada = convolution(imagem_suavizada, np.array(custom_filter))
 
     # Exibe a imagem resultante
     plt.imshow(imagem_filtrada, cmap='gray')
     plt.axis('off')
     plt.show()
 
-    save_image(imagem_filtrada)
+    #save_image(imagem_filtrada)
 
+#função para criar uma janela e que permite ao usuário inserir uma matriz
+def create_custom_filter_window():
+    global custom_filter_window, entries
 
+    custom_filter_window = tk.Toplevel(root)
+    custom_filter_window.title("Matriz do Filtro Personalizado")
+
+    entries = []
+    for i in range(3):
+        row_entries = []
+        for j in range(3):
+            entry = tk.Entry(custom_filter_window, width=5)
+            entry.grid(row=i, column=j)
+            row_entries.append(entry)
+        entries.append(row_entries)
+
+    apply_button = tk.Button(custom_filter_window, text="Aplicar Filtro Personalizado", command=apply_filter_custom)
+    apply_button.pack(pady=10)
 
 # Cria uma instância da janela principal
 root = tk.Tk()
@@ -139,9 +182,12 @@ filter_dropdown = tk.OptionMenu(root, filter_variable, *filters.keys())
 filter_dropdown.pack(pady=10)
 
 # Cria um botão para aplicar o filtro
-apply_button = tk.Button(root, text="Aplicar Filtro e Salvar", command=apply_filter)
+apply_button = tk.Button(custom_filter_window, text="Aplicar Filtro", command=apply_filter_custom)
 apply_button.pack(pady=10)
 
+#Criar um botão para o usuário aplicar um filtro
+custom_filter_button = tk.Button(root, text="Filtro Personalizado", command= create_custom_filter_window)
+custom_filter_button.pack(pady=10)
 
 # Executa o loop principal da aplicação
 root.mainloop()
