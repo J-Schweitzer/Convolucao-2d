@@ -76,11 +76,6 @@ def apply_filter():
     if selected_filter == "Custom":
         # Pede ao usuário para inserir a matriz do filtro manualmente
         kernel = filters[selected_filter]
-
-        print("Núcleo de convolução: ")
-        print(kernel)
-
-        kernel_label.config(text="Núcleo de convolução: \n" + str(kernel))
         create_custom_filter_window()
     else:
         # Obtém o kernel do filtro selecionado
