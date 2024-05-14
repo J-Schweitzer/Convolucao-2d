@@ -3,9 +3,11 @@ import cv2
 import matplotlib.pyplot as plt
 import tkinter as tk
 from tkinter import filedialog
+from filters import filters
 
 custom_filter_window = None  # Definindo custom_filter_window como uma variável global
-entries = None  # Definindo entries como uma variável global
+entries = []  # Definindo entries como uma variável global
+filtered_image = None  # Variável para armazenar a imagem filtrada
 
 def convolution(image, kernel):
     # Obtém as dimensões da imagem e do kernel
@@ -37,7 +39,6 @@ def smooth_image(image):
     return smoothed_image
 
 def load_image():
-
     # Abre uma janela de diálogo para selecionar um arquivo de imagem
     file_path = filedialog.askopenfilename()
 
@@ -74,58 +75,112 @@ def apply_filter():
 
     if selected_filter == "Custom":
         # Pede ao usuário para inserir a matriz do filtro manualmente
+        kernel = filters[selected_filter]
+
+        print("Núcleo de convolução: ")
+        print(kernel)
+
+        kernel_label.config(text="Núcleo de convolução: \n" + str(kernel))
         create_custom_filter_window()
     else:
         # Obtém o kernel do filtro selecionado
         kernel = filters[selected_filter]
 
+        print("Núcleo de convolução: ")
+        print(kernel)
+
+        kernel_label.config(text="Núcleo de convolução: \n" + str(kernel))
+
         # Aplica a convolução à imagem em escala de cinza
-        imagem_filtrada = convolution(imagem_suavizada, kernel)
+        global filtered_image
+        filtered_image = convolution(imagem_suavizada, kernel)
 
         # Exibe a imagem resultante
-        plt.imshow(imagem_filtrada, cmap='gray')
+        plt.imshow(filtered_image, cmap='gray')
         plt.axis('off')
         plt.show()
 
-        #save_image(imagem_filtrada)
-
 def apply_filter_custom():
-    # Obtém os valores da matriz do filtro personalizado dos campos de entrada
-    custom_filter = [[float(entry.get()) for entry in row] for row in entries]
+    # Verifica se entries não é None
+    if entries:
+        # Obtém os valores da matriz do filtro personalizado dos campos de entrada
+        custom_filter = [[float(entry.get()) for entry in row] for row in entries]
 
-    # Converte a imagem original para escala de cinza
-    imagem_cinza = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+        # Converte a imagem original para escala de cinza
+        imagem_cinza = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
 
-    imagem_suavizada = smooth_image(imagem_cinza)
+        imagem_suavizada = smooth_image(imagem_cinza)
 
-    # Aplica a convolução à imagem em escala de cinza usando o filtro personalizado
-    imagem_filtrada = convolution(imagem_suavizada, np.array(custom_filter))
+        # Aplica a convolução à imagem em escala de cinza usando o filtro personalizado
+        global filtered_image
+        filtered_image = convolution(imagem_suavizada, np.array(custom_filter))
 
-    # Exibe a imagem resultante
-    plt.imshow(imagem_filtrada, cmap='gray')
-    plt.axis('off')
-    plt.show()
+        # Exibe a imagem resultante
+        plt.imshow(filtered_image, cmap='gray')
+        plt.axis('off')
+        plt.show()
 
-    #save_image(imagem_filtrada)
+    else:
+        print("Nenhuma matriz de filtro personalizado foi criada.")
 
-#função para criar uma janela e que permite ao usuário inserir uma matriz
 def create_custom_filter_window():
+    global custom_filter_window, entries, dim_entry_row, dim_entry_col
+
+    custom_filter_window = tk.Toplevel(root)
+    custom_filter_window.title("Matriz do Filtro Personalizado")
+
+    # Etapa 1: Entrada para o número de linhas
+    tk.Label(custom_filter_window, text="Número de Linhas:").grid(row=0, column=0)
+    dim_entry_row = tk.Entry(custom_filter_window, width=5)
+    dim_entry_row.grid(row=0, column=1)
+    
+    # Etapa 2: Entrada para o número de colunas
+    tk.Label(custom_filter_window, text="Número de Colunas:").grid(row=1, column=0)
+    dim_entry_col = tk.Entry(custom_filter_window, width=5)
+    dim_entry_col.grid(row=1, column=1)
+
+    # Botão para confirmar a dimensão da matriz
+    confirm_button = tk.Button(custom_filter_window, text="Confirmar", command=confirm_dimension)
+    confirm_button.grid(row=2, columnspan=2, pady=10)
+
+def confirm_dimension():
+    # Obter o número de linhas e colunas inseridas pelo usuário
+    num_rows = int(dim_entry_row.get())
+    num_cols = int(dim_entry_col.get())
+
+    # Criar a janela para a matriz do filtro
+    create_filter_matrix_window(num_rows, num_cols)
+
+def create_filter_matrix_window(num_rows, num_cols):
     global custom_filter_window, entries
+
+    if custom_filter_window:
+        custom_filter_window.destroy()
 
     custom_filter_window = tk.Toplevel(root)
     custom_filter_window.title("Matriz do Filtro Personalizado")
 
     entries = []
-    for i in range(3):
+    for i in range(num_rows):
         row_entries = []
-        for j in range(3):
+        for j in range(num_cols):
             entry = tk.Entry(custom_filter_window, width=5)
             entry.grid(row=i, column=j)
             row_entries.append(entry)
         entries.append(row_entries)
 
-    apply_button = tk.Button(custom_filter_window, text="Aplicar Filtro Personalizado", command=apply_filter_custom)
-    apply_button.pack(pady=10)
+    # Botão para aplicar o filtro personalizado
+    apply_button_custom = tk.Button(custom_filter_window, text="Aplicar Filtro Personalizado", command=apply_filter_custom)
+    apply_button_custom.grid(row=num_rows, columnspan=num_cols, pady=10)
+
+
+# Função para salvar a imagem filtrada
+def save_filtered_image():
+    global filtered_image
+    if filtered_image is not None:
+        save_image(filtered_image)
+    else:
+        print("Nenhuma imagem filtrada disponível para salvar.")
 
 # Cria uma instância da janela principal
 root = tk.Tk()
@@ -143,37 +198,6 @@ y_position = (screen_height - window_height) // 2
 load_button = tk.Button(root, text="Carregar Imagem", command=load_image)
 load_button.pack(pady=10)
 
-# Definindo os filtros
-filters = {
-    'Filtro Suavizacao por Media': np.ones((5, 5)) / 25,
-
-    'Filtro Suavizacao por Media 21': np.ones((21, 21)) / 441,
- 
-    'Filtro Laplaciano' : np.array([[0, -1, 0],
-                                    [-1, 4, -1],
-                                    [0, -1, 0]]),
-
-    'Filtro Gaussiano' : np.array([[1, 2, 1],
-                                   [2, 4, 2],
-                                   [1, 2, 1]]) / 16,
-    
-    'Filtro de Nitidez' : np.array([[0, -1, 0],
-                                    [-1, 5, -1],
-                                    [0, -1, 0]]),
-
-    'Filtro Emboss' : np.array([[-2, -1,  0],
-                                [-1,  1,  1],
-                                [ 0,  1,  2]]),
-
-    'Filtro Sobel Vertical' : np.array([[-1, 0, 1],
-                                        [-2, 0, 2],
-                                        [-1, 0, 1]]),
-
-    'Filtro Sobel Horizontal' : np.array([[-1, -2, -1],
-                                          [0, 0, 0],
-                                          [1, 2, 1]])
-}
-
 # Cria uma lista suspensa para selecionar o filtro
 filter_variable = tk.StringVar(root)
 filter_variable.set(list(filters.keys())[0])  # Define o filtro padrão
@@ -181,13 +205,20 @@ filter_variable.set(list(filters.keys())[0])  # Define o filtro padrão
 filter_dropdown = tk.OptionMenu(root, filter_variable, *filters.keys())
 filter_dropdown.pack(pady=10)
 
+kernel_label = tk.Label(root, text = "Núcleo de Convolução: ")
+kernel_label.pack(pady=5)
+
 # Cria um botão para aplicar o filtro
-apply_button = tk.Button(custom_filter_window, text="Aplicar Filtro", command=apply_filter_custom)
+apply_button = tk.Button(root, text="Aplicar Filtro", command=apply_filter)
 apply_button.pack(pady=10)
 
-#Criar um botão para o usuário aplicar um filtro
-custom_filter_button = tk.Button(root, text="Filtro Personalizado", command= create_custom_filter_window)
+# Criar um botão para o usuário aplicar um filtro personalizado
+custom_filter_button = tk.Button(root, text="Filtro Personalizado", command=create_custom_filter_window)
 custom_filter_button.pack(pady=10)
+
+# Cria um botão para salvar a imagem filtrada
+save_button = tk.Button(root, text="Salvar Imagem", command=save_filtered_image)
+save_button.pack(pady=10)
 
 # Executa o loop principal da aplicação
 root.mainloop()
